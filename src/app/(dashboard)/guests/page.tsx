@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWedding } from '@/contexts/WeddingContext'
-import { getGuests, createGuest, Guest, GuestStatus } from '@/actions/guests'
+import { getGuests, createGuest, deleteGuest, Guest } from '@/actions/guests'
 
 export default function GuestsPage() {
   const { activeWedding } = useWedding()
@@ -44,6 +44,12 @@ export default function GuestsPage() {
     setIsDialogOpen(false)
     const newGuests = await getGuests(activeWedding.id)
     setGuests(newGuests)
+  }
+
+  async function handleDeleteGuest(id: string) {
+    if (!activeWedding) return
+    await deleteGuest(id)
+    setGuests((prev) => prev.filter((g) => g.id !== id))
   }
 
   if (!activeWedding) return null
@@ -103,6 +109,7 @@ export default function GuestsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>RSVP Status</TableHead>
+                  <TableHead className="w-12 text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -111,17 +118,27 @@ export default function GuestsPage() {
                     <TableCell className="font-medium">{guest.name}</TableCell>
                     <TableCell>{guest.family_name || '-'}</TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={guest.status === 'attending' ? 'default' : guest.status === 'declined' ? 'destructive' : 'secondary'}
                       >
                         {guest.status.replace('_', ' ')}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteGuest(guest.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {guests.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                       No guests found. Click &quot;Add Guest&quot; to start building your list.
                     </TableCell>
                   </TableRow>

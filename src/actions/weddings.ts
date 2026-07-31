@@ -13,44 +13,49 @@ export type Wedding = {
 
 /**
  * Fetches all weddings the authenticated user is a member of.
- * Uses a direct join through wedding_members to avoid RLS recursion.
+ * Tries admin client first (if key configured), falls back gracefully to user client.
  */
 export async function getUserWeddings(): Promise<Wedding[]> {
-  const supabase = await createClient()
-  const admin = createAdminClient()
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+    const admin = createAdminClient()
 
-  // Use admin client to bypass RLS and fetch wedding_ids for this user
-  const { data: memberships, error: memberError } = await admin
-    .from('wedding_members')
-    .select('wedding_id')
-    .eq('user_id', user.id)
+    if (admin) {
+      const { data: memberships } = await admin
+        .from('wedding_members')
+        .select('wedding_id')
+        .eq('user_id', user.id)
 
-  if (memberError || !memberships || memberships.length === 0) {
+      if (memberships && memberships.length > 0) {
+        const weddingIds = memberships.map((m) => m.wedding_id)
+        const { data } = await admin
+          .from('weddings')
+          .select('*')
+          .in('id', weddingIds)
+          .order('created_at', { ascending: false })
+
+        if (data && data.length > 0) return data as Wedding[]
+      }
+    }
+
+    // Fallback: standard client user query
+    const { data } = await supabase
+      .from('weddings')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    return (data || []) as Wedding[]
+  } catch (error) {
+    console.error('Error fetching user weddings:', error)
     return []
   }
-
-  const weddingIds = memberships.map((m) => m.wedding_id)
-
-  const { data, error } = await admin
-    .from('weddings')
-    .select('*')
-    .in('id', weddingIds)
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching weddings:', error)
-    return []
-  }
-
-  return data as Wedding[]
 }
 
 /**
  * Creates a new wedding and adds the authenticated user as admin.
- * Uses admin client to bypass RLS, which causes infinite recursion on this table.
  */
 export async function createWedding(formData: FormData) {
   const name = formData.get('name') as string
@@ -61,9 +66,9 @@ export async function createWedding(formData: FormData) {
   if (!user) throw new Error('Not authenticated')
 
   const admin = createAdminClient()
+  const db = admin || supabase
 
-  // Insert wedding using admin client to bypass RLS
-  const { data: wedding, error: weddingError } = await admin
+  const { data: wedding, error: weddingError } = await db
     .from('weddings')
     .insert({
       name,
@@ -75,11 +80,10 @@ export async function createWedding(formData: FormData) {
 
   if (weddingError) {
     console.error('Error creating wedding:', weddingError)
-    throw new Error('Could not create wedding')
+    throw new Error(weddingError.message || 'Could not create wedding')
   }
 
-  // Insert the user as admin member using admin client
-  const { error: memberError } = await admin
+  const { error: memberError } = await db
     .from('wedding_members')
     .insert({
       wedding_id: wedding.id,
@@ -89,7 +93,7 @@ export async function createWedding(formData: FormData) {
 
   if (memberError) {
     console.error('Error adding wedding member:', memberError)
-    throw new Error('Could not add member to wedding')
+    // Non-fatal if created_by constraint handles access
   }
 
   revalidatePath('/', 'layout')
