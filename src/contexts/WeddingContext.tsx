@@ -1,13 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, ReactNode } from 'react'
+import type { Wedding } from '@/actions/weddings'
 
-export type Wedding = {
-  id: string
-  name: string
-  date: string
-  created_by: string
-}
+export type { Wedding }
 
 type WeddingContextType = {
   activeWedding: Wedding | null
