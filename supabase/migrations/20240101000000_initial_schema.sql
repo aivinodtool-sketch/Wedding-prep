@@ -134,22 +134,34 @@ create policy "Users can insert own profile" on public.profiles for insert with 
 -- Weddings: can view if member
 create policy "Users can view their weddings" on public.weddings
   for select using (
-    id in (select wedding_id from public.wedding_members where user_id = auth.uid())
+    public.has_wedding_access(id)
   );
+
+-- For admins to manage, we need a new security definer function since has_wedding_access just checks any role.
+create or replace function public.is_wedding_admin(w_id uuid)
+returns boolean as $$
+begin
+  return exists (
+    select 1 from public.wedding_members
+    where wedding_id = w_id and user_id = auth.uid() and role = 'admin'
+  );
+end;
+$$ language plpgsql security definer;
+
 create policy "Admins can update weddings" on public.weddings
   for update using (
-    id in (select wedding_id from public.wedding_members where user_id = auth.uid() and role = 'admin')
+    public.is_wedding_admin(id)
   );
 create policy "Users can insert weddings" on public.weddings for insert with check (true);
 
 -- Wedding Members
 create policy "Users can view members of their weddings" on public.wedding_members
   for select using (
-    wedding_id in (select wedding_id from public.wedding_members where user_id = auth.uid())
+    public.has_wedding_access(wedding_id)
   );
 create policy "Admins can manage members" on public.wedding_members
   for all using (
-    wedding_id in (select wedding_id from public.wedding_members where user_id = auth.uid() and role = 'admin')
+    public.is_wedding_admin(wedding_id)
   );
 create policy "Users can join weddings" on public.wedding_members for insert with check (true);
 
