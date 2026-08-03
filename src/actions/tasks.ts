@@ -14,6 +14,7 @@ export type Task = {
   status: TaskStatus
   priority: TaskPriority
   due_date: string | null
+  category: string | null
 }
 
 export async function getTasks(weddingId: string): Promise<Task[]> {
@@ -42,6 +43,7 @@ export async function createTask(formData: FormData) {
   const wedding_id = formData.get('wedding_id') as string
   const title = formData.get('title') as string
   const priority = (formData.get('priority') as TaskPriority) || 'medium'
+  const category = (formData.get('category') as string) || null
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,6 +57,7 @@ export async function createTask(formData: FormData) {
       priority,
       status: 'pending',
       created_by: user.id,
+      description: category, // store category in description field since schema uses description
     })
 
   if (error) {

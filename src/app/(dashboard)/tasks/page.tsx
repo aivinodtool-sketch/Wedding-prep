@@ -12,6 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useWedding } from '@/contexts/WeddingContext'
 import { getTasks, createTask, updateTaskStatus, deleteTask, Task, TaskStatus } from '@/actions/tasks'
 
+const TASK_CATEGORIES = [
+  'Venue', 'Catering', 'Photography', 'Decoration', 'Attire',
+  'Music & Entertainment', 'Invitations', 'Transport', 'Accommodation', 'Other',
+]
+
+const COLUMNS: { title: string; status: TaskStatus }[] = [
+  { title: 'Pending', status: 'pending' },
+  { title: 'In Progress', status: 'in_progress' },
+  { title: 'Completed', status: 'completed' },
+]
+
 export default function TasksPage() {
   const { activeWedding } = useWedding()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -19,22 +30,15 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function loadTasks() {
-      if (activeWedding) {
-        setLoading(true)
-        const data = await getTasks(activeWedding.id)
-        setTasks(data)
-        setLoading(false)
-      }
+    if (!activeWedding) return
+    async function load() {
+      setLoading(true)
+      const data = await getTasks(activeWedding!.id)
+      setTasks(data)
+      setLoading(false)
     }
-    loadTasks()
+    load()
   }, [activeWedding])
-
-  const columns = [
-    { title: 'Pending', status: 'pending' },
-    { title: 'In Progress', status: 'in_progress' },
-    { title: 'Completed', status: 'completed' },
-  ]
 
   async function handleCreateTask(formData: FormData) {
     if (!activeWedding) return
@@ -47,22 +51,23 @@ export default function TasksPage() {
 
   async function handleStatusChange(taskId: string, newStatus: TaskStatus) {
     if (!activeWedding) return
+    // Optimistic update
+    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t))
     await updateTaskStatus(taskId, newStatus)
-    const newTasks = await getTasks(activeWedding.id)
-    setTasks(newTasks)
   }
 
   async function handleDeleteTask(taskId: string) {
-    if (!activeWedding) return
-    await deleteTask(taskId)
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    await deleteTask(taskId)
   }
 
   if (!activeWedding) return null
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex items-center justify-between">
+    /* Use fixed height relative to viewport so kanban columns are bounded and scrollable */
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={
@@ -81,9 +86,22 @@ export default function TasksPage() {
                 <Input id="title" name="title" placeholder="Book Venue, Order Flowers..." required />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select name="category" defaultValue="Other">
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="priority">Priority</Label>
                 <Select name="priority" defaultValue="medium">
-                  <SelectTrigger>
+                  <SelectTrigger id="priority">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -99,37 +117,62 @@ export default function TasksPage() {
         </Dialog>
       </div>
 
+      {/* Kanban board — takes remaining height, columns individually scroll */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">Loading tasks...</div>
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          Loading tasks...
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 overflow-hidden">
-          {columns.map((col) => (
-            <div key={col.status} className="flex flex-col h-full rounded-xl bg-zinc-100/50 dark:bg-zinc-800/20 p-4">
-              <h2 className="font-semibold mb-4 text-sm tracking-tight text-muted-foreground uppercase">{col.title}</h2>
-              <div className="space-y-3 flex-1 overflow-y-auto pr-2">
-                {tasks
-                  .filter((t) => t.status === col.status)
-                  .map((task) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
+          {COLUMNS.map((col) => {
+            const colTasks = tasks.filter((t) => t.status === col.status)
+            return (
+              <div key={col.status} className="flex flex-col min-h-0 rounded-xl bg-zinc-100/50 dark:bg-zinc-800/20 p-4">
+                {/* Column header with count badge */}
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                  <h2 className="font-semibold text-sm tracking-tight text-muted-foreground uppercase">
+                    {col.title}
+                  </h2>
+                  <span className="text-xs bg-muted rounded-full px-2 py-0.5 font-medium text-muted-foreground">
+                    {colTasks.length}
+                  </span>
+                </div>
+
+                {/* Scrollable task list */}
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                  {colTasks.map((task) => (
                     <Card key={task.id} className="relative group hover:shadow-md transition-shadow">
                       <CardHeader className="p-4 pb-2">
-                        <div className="flex justify-between items-start pr-6">
-                          <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-sm font-medium leading-tight">{task.title}</CardTitle>
+                            {task.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteTask(task.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDeleteTask(task.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
-                        <div className="flex justify-between items-center mt-2">
-                          <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}>
+                        <div className="flex justify-between items-center gap-2">
+                          <Badge
+                            variant={
+                              task.priority === 'high' ? 'destructive'
+                                : task.priority === 'medium' ? 'default'
+                                  : 'secondary'
+                            }
+                          >
                             {task.priority}
                           </Badge>
                           <Select
+                            key={task.status}
                             defaultValue={task.status}
                             onValueChange={(val) => {
                               if (val) handleStatusChange(task.id, val as TaskStatus)
@@ -148,9 +191,16 @@ export default function TasksPage() {
                       </CardContent>
                     </Card>
                   ))}
+
+                  {colTasks.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground text-xs border-2 border-dashed rounded-lg">
+                      No {col.title.toLowerCase()} tasks
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

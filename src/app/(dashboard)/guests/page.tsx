@@ -55,8 +55,9 @@ export default function GuestsPage() {
   if (!activeWedding) return null
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Guest List</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={
@@ -98,13 +99,14 @@ export default function GuestsPage() {
         </Dialog>
       </div>
 
-      <div className="rounded-md border bg-white dark:bg-zinc-950 flex-1 overflow-hidden flex flex-col">
+      {/* Scrollable table container */}
+      <div className="flex-1 min-h-0 rounded-md border bg-white dark:bg-zinc-950 overflow-hidden flex flex-col">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Loading guests...</div>
         ) : (
-          <div className="overflow-auto flex-1">
+          <div className="overflow-y-auto flex-1">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-white dark:bg-zinc-950 z-10">
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Group</TableHead>
