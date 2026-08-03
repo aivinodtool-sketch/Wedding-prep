@@ -38,8 +38,8 @@ export default function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Documents</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={
             <Button>
@@ -65,7 +65,7 @@ export default function DocumentsPage() {
       {loading ? (
         <div className="p-8 text-center text-muted-foreground">Loading documents...</div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {docs.map((doc) => (
             <Card key={doc.id} className="group">
               <CardContent className="p-4 flex items-start gap-4">
@@ -80,7 +80,7 @@ export default function DocumentsPage() {
                     {doc.size} • {doc.date}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-col gap-2 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alert(`Downloading ${doc.name}`)}>
                     <Download className="h-4 w-4" />
                   </Button>

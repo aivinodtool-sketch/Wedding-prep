@@ -67,9 +67,9 @@ export default function ShoppingPage() {
   if (!activeWedding) return null
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 130px)' }}>
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
-        <h1 className="text-3xl font-bold tracking-tight">Shopping List</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Shopping List</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger render={
             <Button>
@@ -106,12 +106,12 @@ export default function ShoppingPage() {
         </Dialog>
       </div>
 
-      <div className="flex-1 min-h-0 rounded-md border bg-white dark:bg-zinc-950 overflow-hidden flex flex-col">
+      <div className="rounded-xl border bg-white dark:bg-zinc-950 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Loading shopping items...</div>
         ) : (
-          <div className="overflow-y-auto flex-1">
-          <Table>
+          <div className="overflow-x-auto">
+            <Table>
             <TableHeader className="sticky top-0 bg-white dark:bg-zinc-950 z-10">
               <TableRow>
                 <TableHead className="w-12"></TableHead>

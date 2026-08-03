@@ -68,6 +68,33 @@ export async function createTask(formData: FormData) {
   revalidatePath('/tasks')
 }
 
+export async function updateTask(taskId: string, formData: FormData) {
+  const title = formData.get('title') as string
+  const priority = (formData.get('priority') as TaskPriority) || 'medium'
+  const category = (formData.get('category') as string) || null
+  const status = (formData.get('status') as TaskStatus) || 'pending'
+
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('tasks')
+    .update({
+      title,
+      priority,
+      status,
+      description: category,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+
+  if (error) {
+    console.error('Error updating task:', error)
+    throw new Error(error.message || 'Could not update task')
+  }
+
+  revalidatePath('/tasks')
+}
+
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const supabase = await createClient()
 

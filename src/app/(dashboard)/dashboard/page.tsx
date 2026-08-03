@@ -2,31 +2,28 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckSquare, Calculator, Users, Calendar } from 'lucide-react'
+import { CheckSquare, Users, Calendar } from 'lucide-react'
 import { useWedding } from '@/contexts/WeddingContext'
 import { getTasks, Task } from '@/actions/tasks'
 import { getGuests, Guest } from '@/actions/guests'
-import { getBudgets, BudgetItem } from '@/actions/budget'
+import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { activeWedding } = useWedding()
   const [tasks, setTasks] = useState<Task[]>([])
   const [guests, setGuests] = useState<Guest[]>([])
-  const [budgets, setBudgets] = useState<BudgetItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadDashboardData() {
       if (activeWedding) {
         setLoading(true)
-        const [t, g, b] = await Promise.all([
+        const [t, g] = await Promise.all([
           getTasks(activeWedding.id),
           getGuests(activeWedding.id),
-          getBudgets(activeWedding.id),
         ])
         setTasks(t)
         setGuests(g)
-        setBudgets(b)
         setLoading(false)
       }
     }
@@ -44,10 +41,6 @@ export default function DashboardPage() {
   // Calculate task stats
   const pendingTasks = tasks.filter((t) => t.status !== 'completed')
 
-  // Calculate budget stats
-  const totalAllocated = budgets.reduce((acc, b) => acc + b.allocated_amount, 0)
-  const totalSpent = budgets.reduce((acc, b) => acc + b.spent_amount, 0)
-
   // Calculate guest stats
   const totalGuests = guests.length
   const attendingGuests = guests.filter((g) => g.status === 'attending').length
@@ -57,10 +50,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{activeWedding.name} Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{activeWedding.name} Dashboard</h1>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Days to Wedding</CardTitle>
@@ -89,19 +82,6 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Budget Spent</CardTitle>
-            <Calculator className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalSpent.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              of ${totalAllocated.toLocaleString()} allocated
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Guest RSVPs</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -114,8 +94,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle>Upcoming Tasks</CardTitle>
           </CardHeader>
@@ -126,12 +106,22 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {pendingTasks.slice(0, 5).map((task) => (
                   <div key={task.id} className="flex items-center gap-4 border-b pb-3 last:border-0">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{task.title}</p>
-                      <p className="text-xs text-muted-foreground capitalize">Priority: {task.priority}</p>
+                    <div className={cn(
+                      "h-2.5 w-2.5 rounded-full shrink-0",
+                      task.status === 'in_progress' ? 'bg-sky-500' : 'bg-amber-500'
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{task.title}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        Priority: {task.priority} {task.description ? `• ${task.description}` : ''}
+                      </p>
                     </div>
-                    <span className="text-xs px-2 py-0.5 rounded bg-muted font-medium capitalize">
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded font-medium capitalize shrink-0",
+                      task.status === 'in_progress'
+                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    )}>
                       {task.status.replace('_', ' ')}
                     </span>
                   </div>
@@ -143,16 +133,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Quick Summary</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-muted-foreground">Budget Categories</span>
-                <span className="font-medium">{budgets.length}</span>
-              </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Total Guests Invited</span>
                 <span className="font-medium">{totalGuests}</span>
@@ -160,6 +146,10 @@ export default function DashboardPage() {
               <div className="flex justify-between border-b pb-2">
                 <span className="text-muted-foreground">Tasks Pending</span>
                 <span className="font-medium">{pendingTasks.length}</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-muted-foreground">Tasks Completed</span>
+                <span className="font-medium">{tasks.filter((t) => t.status === 'completed').length}</span>
               </div>
               <div className="flex justify-between pt-1">
                 <span className="text-muted-foreground">Days Remaining</span>
@@ -172,3 +162,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

@@ -9,35 +9,34 @@ import {
   Users, 
   Store, 
   ShoppingCart, 
-  Calculator,
   FileText
 } from 'lucide-react'
 
-const navigation = [
+export const NAVIGATION_ITEMS = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Guests', href: '/guests', icon: Users },
   { name: 'Vendors', href: '/vendors', icon: Store },
   { name: 'Shopping', href: '/shopping', icon: ShoppingCart },
-  { name: 'Budget', href: '/budget', icon: Calculator },
   { name: 'Documents', href: '/documents', icon: FileText },
 ]
 
-export function Sidebar() {
+export function Sidebar({ className, onItemClick }: { className?: string; onItemClick?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-zinc-50/40 dark:bg-zinc-950/40 px-3 py-4">
+    <div className={cn("hidden md:flex h-full w-64 flex-col border-r bg-zinc-50/40 dark:bg-zinc-950/40 px-3 py-4 shrink-0", className)}>
       <div className="mb-8 px-4 text-lg font-semibold tracking-tight">
         Wedding Planner
       </div>
       <div className="space-y-1">
-        {navigation.map((item) => {
+        {NAVIGATION_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
           return (
             <Link
               key={item.name}
               href={item.href}
+              onClick={onItemClick}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:text-primary',
                 isActive
@@ -54,3 +53,4 @@ export function Sidebar() {
     </div>
   )
 }
+
