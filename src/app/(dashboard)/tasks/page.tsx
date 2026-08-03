@@ -14,8 +14,8 @@ import { getTasks, createTask, updateTask, updateTaskStatus, deleteTask, Task, T
 import { cn } from '@/lib/utils'
 
 const DEFAULT_CATEGORIES = [
-  'Venue', 'Catering', 'Photography', 'Decoration', 'Attire',
-  'Music & Entertainment', 'Invitations', 'Transport', 'Accommodation', 'Other',
+  'Venue', 'Bridal Related', 'Photography', 'Decoration', 'Attire',
+  'Music & Entertainment', 'Shopping', 'Transport', 'Accommodation', 'Other',
 ]
 
 const COLUMNS: { title: string; status: TaskStatus; colorClass: string; badgeClass: string; dotClass: string; borderClass: string }[] = [
