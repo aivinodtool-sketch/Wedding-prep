@@ -8,6 +8,7 @@ export type Vendor = {
   wedding_id: string
   name: string
   category: string
+  subcategory?: string | null
   phone: string | null
   address: string | null
   advance_paid: number
@@ -30,11 +31,24 @@ export async function getVendors(weddingId: string): Promise<Vendor[]> {
       return []
     }
 
-    return (data || []).map((v) => ({
-      ...v,
-      advance_paid: Number(v.advance_paid || 0),
-      total_amount: Number(v.total_amount || 0),
-    })) as Vendor[]
+    return (data || []).map((v) => {
+      let category = v.category || 'General'
+      let subcategory: string | null = null
+
+      if (category.includes(' > ')) {
+        const parts = category.split(' > ')
+        category = parts[0]
+        subcategory = parts[1]
+      }
+
+      return {
+        ...v,
+        category,
+        subcategory,
+        advance_paid: Number(v.advance_paid || 0),
+        total_amount: Number(v.total_amount || 0),
+      }
+    }) as Vendor[]
   } catch (error) {
     console.error('Error in getVendors:', error)
     return []
@@ -44,10 +58,13 @@ export async function getVendors(weddingId: string): Promise<Vendor[]> {
 export async function createVendor(formData: FormData) {
   const wedding_id = formData.get('wedding_id') as string
   const name = formData.get('name') as string
-  const category = formData.get('category') as string
-  const phone = formData.get('phone') as string
-  const total_amount = parseFloat(formData.get('total_amount') as string || '0')
-  const advance_paid = parseFloat(formData.get('advance_paid') as string || '0')
+  const category = (formData.get('category') as string) || 'General'
+  const subcategory = (formData.get('subcategory') as string) || null
+  const phone = (formData.get('phone') as string) || null
+  const total_amount = parseFloat((formData.get('total_amount') as string) || '0')
+  const advance_paid = parseFloat((formData.get('advance_paid') as string) || '0')
+
+  const combinedCategory = subcategory ? `${category} > ${subcategory}` : category
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -55,7 +72,7 @@ export async function createVendor(formData: FormData) {
     .insert({
       wedding_id,
       name,
-      category,
+      category: combinedCategory,
       phone: phone || null,
       total_amount,
       advance_paid,
@@ -66,6 +83,7 @@ export async function createVendor(formData: FormData) {
     throw new Error(error.message || 'Could not create vendor')
   }
 
+  revalidatePath('/dashboard')
   revalidatePath('/vendors')
 }
 
@@ -81,5 +99,6 @@ export async function deleteVendor(vendorId: string) {
     throw new Error(error.message || 'Could not delete vendor')
   }
 
+  revalidatePath('/dashboard')
   revalidatePath('/vendors')
 }

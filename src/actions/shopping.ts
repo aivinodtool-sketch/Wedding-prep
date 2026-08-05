@@ -8,6 +8,7 @@ export type ShoppingItem = {
   wedding_id: string
   name: string
   category: string
+  subcategory?: string | null
   quantity: number
   estimated_cost: number
   actual_cost: number
@@ -30,11 +31,24 @@ export async function getShoppingItems(weddingId: string): Promise<ShoppingItem[
       return []
     }
 
-    return (data || []).map((item) => ({
-      ...item,
-      estimated_cost: Number(item.estimated_cost || 0),
-      actual_cost: Number(item.actual_cost || 0),
-    })) as ShoppingItem[]
+    return (data || []).map((item) => {
+      let category = item.category || 'General'
+      let subcategory: string | null = null
+
+      if (category.includes(' > ')) {
+        const parts = category.split(' > ')
+        category = parts[0]
+        subcategory = parts[1]
+      }
+
+      return {
+        ...item,
+        category,
+        subcategory,
+        estimated_cost: Number(item.estimated_cost || 0),
+        actual_cost: Number(item.actual_cost || 0),
+      }
+    }) as ShoppingItem[]
   } catch (error) {
     console.error('Error in getShoppingItems:', error)
     return []
@@ -44,9 +58,12 @@ export async function getShoppingItems(weddingId: string): Promise<ShoppingItem[
 export async function createShoppingItem(formData: FormData) {
   const wedding_id = formData.get('wedding_id') as string
   const name = formData.get('name') as string
-  const category = formData.get('category') as string
-  const estimated_cost = parseFloat(formData.get('estimated_cost') as string || '0')
-  const actual_cost = parseFloat(formData.get('actual_cost') as string || '0')
+  const category = (formData.get('category') as string) || 'General'
+  const subcategory = (formData.get('subcategory') as string) || null
+  const estimated_cost = parseFloat((formData.get('estimated_cost') as string) || '0')
+  const actual_cost = parseFloat((formData.get('actual_cost') as string) || '0')
+
+  const combinedCategory = subcategory ? `${category} > ${subcategory}` : category
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -54,7 +71,7 @@ export async function createShoppingItem(formData: FormData) {
     .insert({
       wedding_id,
       name,
-      category,
+      category: combinedCategory,
       estimated_cost,
       actual_cost,
       is_purchased: false,
@@ -65,6 +82,7 @@ export async function createShoppingItem(formData: FormData) {
     throw new Error(error.message || 'Could not create shopping item')
   }
 
+  revalidatePath('/dashboard')
   revalidatePath('/shopping')
 }
 
@@ -80,6 +98,7 @@ export async function toggleItemPurchased(itemId: string, isPurchased: boolean) 
     throw new Error(error.message || 'Could not update item')
   }
 
+  revalidatePath('/dashboard')
   revalidatePath('/shopping')
 }
 
@@ -95,5 +114,6 @@ export async function deleteShoppingItem(itemId: string) {
     throw new Error(error.message || 'Could not delete item')
   }
 
+  revalidatePath('/dashboard')
   revalidatePath('/shopping')
 }
